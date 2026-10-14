@@ -8,6 +8,24 @@ the matching coronary arteries on an interactive 3D heart (BodyParts3D meshes, T
 
 > **Clinical safety:** for decision support and educational purposes only. Not a substitute for formal diagnostic imaging or clinical judgement.
 
+
+## Problem Statement — Track A: Cardiovascular Risk Visualization & Prediction
+
+### Challenge
+
+Build an interactive 3D visualization system that predicts coronary artery disease and overall cardiac risk from patient physiological and clinical data, mapping predictions onto an interactive 3D human anatomical model.
+
+### Track A Requirements Addressed
+
+Our project, **CAD Risk 3D**, addresses the Track A challenge through the following features:
+
+- **Predictive Modeling:** Predicts overall Coronary Artery Disease (CAD) status and vessel-specific stenosis status for the LAD, LCX, and RCA using clinical, demographic, laboratory, ECG, and echocardiographic features.
+- **3D Visual Mapping:** Displays an interactive 3D heart with coronary arteries color-coded according to their predicted risk, with rotation, zoom, and vessel selection.
+- **Clinical Dashboard:** Presents risk predictions, SHAP-based explanations, and physiological measurements alongside the visualization.
+- **Clinical Safety:** Clearly states that predictions are intended for educational and decision-support purposes and are not a substitute for formal diagnostic imaging.
+
+The system uses the Extension of Z-Alizadeh Sani dataset, containing 303 patient records, and open-source anatomical meshes from BodyParts3D. It is designed to help users explore model predictions intuitively while acknowledging that predicted vessel risk does not identify the location or severity of an anatomical lesion.
+
 ## Features
 - 4 binary classifiers (CAD, LAD, LCX, RCA); `LAD, LCX, RCA, Cath` excluded from inputs (asserted in code) to prevent target leakage
 - 53 input features; 1st/99th percentile clipping applied identically at train and inference
