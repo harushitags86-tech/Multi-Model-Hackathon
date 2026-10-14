@@ -1,0 +1,4 @@
+# Runtime: the backend, dashboard and 3D viewer (Python 3.10 or newer)
+flask>=2.2
+numpy>=1.23
+pandas>=1.5

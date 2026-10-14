@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardiac Risk Clinical Dashboard</title>
+<style>
+:root{--bg:#0b1020;--card:#121a30;--line:#25304f;--text:#e8edf8;--mute:#93a0c0;--accent:#4cc9f0;--low:#2ecc71;--mid:#f5b82e;--high:#ef476f}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:13.5px;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);flex:0 0 auto}
+header h1{font-size:17px;margin:0}
+#status{font-size:12px;padding:3px 10px;border-radius:99px;background:#1d2849;color:var(--mute)}
+#status.ok{background:#12351f;color:#7ee2a0}#status.bad{background:#40161f;color:#ff9db0}
+#disc{margin:8px 16px 0;padding:7px 12px;border-radius:10px;font-size:12.5px;background:#3a1620;border:1px solid #8a2c45;color:#ffd5de;flex:0 0 auto}
+#work{flex:1;min-height:0;display:flex;flex-direction:column;padding:8px 16px 0}
+#top{flex:1;min-height:140px;display:flex;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
+#left{flex:0 0 var(--lw,330px);min-width:230px;overflow:auto}
+#right{flex:0 0 var(--rw,390px);min-width:250px;overflow:auto}
+#right .card+.card{margin-top:10px}
+#viewWrap{flex:1 1 0;min-width:260px;position:relative;padding:0;overflow:hidden}
+#viewer{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#0b1020}
+body.dragging #viewer{pointer-events:none}
+#viewBtns{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:2}
+.vsplit,.hsplit{flex:0 0 10px;position:relative;touch-action:none}
+.vsplit{cursor:col-resize}.hsplit{cursor:row-resize}
+.vsplit:after{content:"";position:absolute;left:4px;top:35%;bottom:35%;width:2px;background:#33426b;border-radius:2px}
+.hsplit:after{content:"";position:absolute;top:4px;left:35%;right:35%;height:2px;background:#33426b;border-radius:2px}
+.vsplit:hover:after,.hsplit:hover:after,body.dragging .vsplit:after,body.dragging .hsplit:after{background:var(--accent)}
+#bottomWrap{flex:0 0 var(--bh,300px);min-height:36px;display:flex;flex-direction:column;overflow:hidden;background:var(--card);border:1px solid var(--line);border-radius:12px 12px 0 0}
+#bottomBar{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+#bottom{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:1.6fr 1fr;gap:12px;padding:10px 12px}
+#bottom .card{background:#0f1730}
+button,select,input[type=number]{background:#1a2442;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px}
+button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.6;cursor:wait}
+#btnPredict{background:var(--accent);color:#06101e;border-color:var(--accent);font-weight:700}
+#btnPredict.attn{box-shadow:0 0 0 3px rgba(245,184,46,.55);background:#f5b82e;border-color:#f5b82e}
+body.cleared #riskNote,body.cleared #whyCard,body.cleared #bottom{display:none}   /* after Reset nothing is shown except the Choose a patient message */
+input::placeholder{color:#5c6b92}
+.needmsg{color:#ffd978;font-weight:600}
+.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%,60%{box-shadow:0 0 0 3px rgba(245,184,46,.9);border-color:#f5b82e}100%{box-shadow:none}}
+details{border-top:1px solid var(--line);padding:6px 0}details>summary{cursor:pointer;font-weight:600;font-size:12.5px;padding:4px 0}
+.f{display:grid;grid-template-columns:1fr 112px;gap:8px;align-items:center;margin:5px 0;font-size:12.5px}
+.f label{color:var(--mute)}.f input[type=number],.f select{width:100%}
+.f input[type=checkbox]{justify-self:start;width:18px;height:18px;accent-color:var(--accent)}
+.risk{display:grid;grid-template-columns:62px 1fr 48px 78px;gap:8px;align-items:center;margin:8px 0;cursor:pointer;padding:4px 6px;border-radius:8px;border:1px solid transparent}
+.risk.sel{border-color:var(--accent);background:#17213f}
+.bar{height:10px;border-radius:5px;background:#1d2849;overflow:hidden}.bar i{display:block;height:100%}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;color:#0b1020;text-align:center}
+.drv{display:grid;grid-template-columns:150px 1fr 54px;gap:6px;align-items:center;margin:4px 0;font-size:12px}
+.drv .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dv{position:relative;height:9px;background:#1d2849;border-radius:4px}
+.dv:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#4a5885}
+.dv i{position:absolute;top:0;height:100%;border-radius:3px}
+.mute{color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid #1b2542;vertical-align:middle}
+td.n,th.n{text-align:right}
+.pill{padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.ok{background:#12351f;color:#7ee2a0}.hi{background:#40161f;color:#ff9db0}.lo{background:#3b3114;color:#ffd978}.na{background:#1d2849;color:var(--mute)}
+#warn{color:#ffd978;font-size:12px;margin-top:6px}
+#err{color:#ff9db0;font-size:12.5px;margin-top:6px}
+footer{flex:0 0 auto;padding:4px 16px 6px;font-size:11px;color:var(--mute)}
+@media (max-width:1000px){
+ body{overflow:auto;display:block}#work{display:block}#top{display:block}
+ #left,#right{flex:none;max-height:none;overflow:visible}#left,#viewWrap,#right{margin-bottom:10px}
+ #viewWrap{height:460px}.vsplit,.hsplit{display:none}#bottomWrap{border-radius:12px}#bottom{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>Cardiac Risk Clinical Dashboard</h1>
+ <span id="status">connecting to API ...</span>
+</header>
+<div id="disc"><b>Clinical safety notice:</b> predictions are for decision support and educational purposes only. They are not a substitute for formal diagnostic imaging or clinical judgement.</div>
+
+<div id="work">
+ <div id="top">
+  <section class="card" id="left">
+   <h2>Patient data</h2>
+   <select id="sample" style="width:100%"><option value="">Load a dataset patient ...</option></select>
+   <div style="display:flex;gap:6px;margin:8px 0 4px">
+    <button id="btnPredict" style="flex:1">Predict</button>
+    <button id="btnDefault">Reset</button>
+   </div>
+   <div id="err"></div><div id="warn"></div>
+   <div id="form"></div>
+  </section>
+  <div class="vsplit" id="splitL" title="Drag to resize the patient panel (double click to reset)"></div>
+
+  <section class="card" id="viewWrap">
+   <iframe id="viewer" title="3D heart viewer"></iframe>
+   <div id="viewBtns"></div>
+  </section>
+  <div class="vsplit" id="splitR" title="Drag to resize the results panel (double click to reset)"></div>
+
+  <section id="right">
+   <div class="card">
+    <h2>Predicted risk</h2>
+    <div id="risks"></div>
+    <div id="riskNote" class="mute" style="font-size:11.5px">Click a row or a vessel in the 3D view. Bands: below 33% low, 33 to 66% moderate, above 66% high. These are model risk scores, not calibrated probabilities.</div>
+   </div>
+   <div class="card" id="whyCard">
+    <h2 id="whyTitle">Why this prediction</h2>
+    <div id="why"></div>
+    <div class="mute" style="font-size:11.5px;margin-top:6px">Exact SHAP values of the linear model. Red pushes risk up, green pushes it down. The score is the sum of all contributions plus the baseline.</div>
+   </div>
+  </section>
+ </div>
+
+ <div class="hsplit" id="splitB" title="Drag to resize the bottom panel (double click to reset)"></div>
+ <section id="bottomWrap">
+  <div id="bottomBar"><span id="bottomTitle">Measurements, model performance and feature importance</span><button id="toggleBottom">Collapse</button></div>
+  <div id="bottom">
+   <div class="card">
+    <h2 id="measTitle">Physiological measurements and their contribution</h2>
+    <div style="overflow:auto"><table id="meas"></table></div>
+    <div class="mute" style="font-size:11.5px;margin-top:6px">Typical ranges are general adult references for orientation only. Share is the feature's part of the total absolute contribution for the selected region.</div>
+   </div>
+   <div>
+    <div class="card">
+     <h2>Model performance (hold out, 61 patients)</h2>
+     <table id="perf"></table>
+     <div id="notes" class="mute" style="font-size:11.5px;margin-top:6px"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+     <h2 id="giTitle">Overall feature importance</h2>
+     <div id="gi"></div>
+    </div>
+   </div>
+  </div>
+ </section>
+</div>
+<footer>3D anatomy, when real meshes are loaded: BodyParts3D, &copy; The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.</footer>
+
+<script>
+/* ============ connection settings ============
+   Served by the Flask backend (python app.py) the API is on the same origin.
+   If you open this file directly or host it elsewhere, add ?api=http://127.0.0.1:8000 */
+const qs = new URLSearchParams(location.search);
+const API = (qs.get("api") || (location.protocol === "file:" ? "http://127.0.0.1:8000" : "")).replace(/\/$/, "");
+const VIEWER_URL = qs.get("viewer") || (API ? API + "/viewer?embed=1" : "/viewer?embed=1");
+
+const $ = id => document.getElementById(id);
+const TARGETS = ["CAD", "LAD", "LCX", "RCA"];
+const TNAME = {CAD: "Overall CAD", LAD: "LAD (left anterior descending)", LCX: "LCX (left circumflex)", RCA: "RCA (right coronary artery)"};
+const COLORS = {Low: "#2ecc71", Moderate: "#f5b82e", High: "#ef476f"};
+let schema = null, values = {}, result = null, selected = "CAD", samples = [], metrics = null, timer = null, seq = 0;
+const meta = {};
+
+/* ---------------- API ---------------- */
+async function api(path, opts) {
+  if (window.STANDALONE) return standaloneApi(path, opts);   // single file mode: data and model are embedded, no server needed
+  const r = await fetch(API + path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+function setStatus(ok, msg) { const s = $("status"); s.textContent = msg; s.className = ok ? "ok" : "bad"; }
+
+/* ---------------- 3D viewer link ---------------- */
+const frame = $("viewer");
+let viewerReady = false;
+const post = (type, data) => frame.contentWindow && frame.contentWindow.postMessage(Object.assign({cad: true, type}, data), "*");
+const viewerApi = {setRisk: p => post("setRisk", {probs: p}), neutral: () => post("neutral", {}), setPulse: b => post("setPulse", {bpm: b}),
+                   select: r => post("select", {region: r}), focus: r => post("focus", {region: r})};
+if (window.VIEWER_HTML) frame.srcdoc = window.VIEWER_HTML; else frame.src = VIEWER_URL;
+window.addEventListener("message", e => {   // viewer to dashboard
+  if (e.source !== frame.contentWindow || !e.data || e.data.cad !== true) return;
+  if (e.data.type === "ready") { viewerReady = true; pushToViewer(); }
+  if (e.data.type === "select" && e.data.region !== selected) chooseRegion(e.data.region, true);
+});
+function pushToViewer() {   // dashboard to viewer: the probabilities drive the 3D colours
+  if (!viewerReady) return;
+  if (result) viewerApi.setRisk(result.probabilities); else viewerApi.neutral();   // grey arteries until the first prediction
+  const pc = result && result.targets.CAD.contributions.find(c => c.feature === "PR"), bpm = pc ? pc.value : values.PR;
+  if (bpm) viewerApi.setPulse(bpm);
+  viewerApi.select(selected);
+}
+[["Heart", "CAD"], ["LAD", "LAD"], ["LCX", "LCX"], ["RCA", "RCA"]].forEach(([t, r]) => {
+  const b = document.createElement("button"); b.textContent = "Focus " + t;
+  b.onclick = () => { chooseRegion(r, false); viewerApi.focus(r); }; $("viewBtns").appendChild(b);
+});
+
+/* ---------------- patient form ---------------- */
+function buildForm() {
+  const f = $("form"); f.innerHTML = "";
+  schema.groups.forEach((g, gi) => {
+    const d = document.createElement("details"); if (gi < 2) d.open = true;
+    d.innerHTML = `<summary>${g.group}</summary>`;
+    g.features.forEach(ft => {
+      meta[ft.name] = ft;
+      const row = document.createElement("div"); row.className = "f";
+      const lab = document.createElement("label"); lab.textContent = ft.label + (ft.unit ? ` (${ft.unit})` : ""); row.appendChild(lab);
+      let el;
+      if (ft.kind === "binary") { el = document.createElement("input"); el.type = "checkbox"; el.onchange = () => setVal(ft.name, el.checked ? 1 : 0); }
+      else if (ft.kind === "ordinal") {
+        el = document.createElement("select");
+        const blank = document.createElement("option"); blank.value = ""; blank.textContent = "Select"; el.appendChild(blank);
+        ft.options.forEach(o => { const op = document.createElement("option"); op.value = o.value; op.textContent = o.label; el.appendChild(op); });
+        el.onchange = () => { if (el.value === "") unsetVal(ft.name); else setVal(ft.name, +el.value); };
+      } else {
+        el = document.createElement("input"); el.type = "number"; el.min = ft.min; el.max = ft.max;
+        el.step = (ft.max - ft.min) > 60 ? 1 : 0.1;
+        el.onchange = () => { if (el.value === "") unsetVal(ft.name); else setVal(ft.name, +el.value); };
+      }
+      el.id = "in_" + ft.name.replace(/\W/g, "_"); row.appendChild(el); d.appendChild(row);
+    });
+    f.appendChild(d);
+  });
+}
+function fillForm() {
+  for (const n in meta) {
+    const el = $("in_" + n.replace(/\W/g, "_")), ft = meta[n], v = values[n];
+    if (ft.kind === "binary") el.checked = v >= 0.5;
+    else el.value = v === undefined ? "" : (ft.kind === "ordinal" ? v : Math.round(v * 100) / 100);   // blank until a patient is chosen or a value typed
+  }
+}
+function defaults() { values = {}; }   // blank form
+function unsetVal(n) { delete values[n]; changed(); }
+function payload() {   // blank fields are left out (the backend uses typical values); unticked boxes mean No
+  const o = Object.assign({}, values);
+  for (const n in meta) if (meta[n].kind === "binary" && o[n] === undefined) o[n] = 0;
+  return o;
+}
+let hasInput = false;   // true once a patient is chosen or a value is edited; false at start and after Reset
+function setVal(n, v) { values[n] = v; changed(); }
+function changed() { hasInput = true; $("btnPredict").classList.add("attn"); if (!result) $("risks").innerHTML = ""; }   // highlight Predict: the inputs are new
+function needPatient() {   // Predict pressed before choosing a patient
+  $("risks").innerHTML = '<span class="needmsg">Choose a patient first (or enter patient values), then press Predict.</span>';
+  const s = $("sample"); s.classList.remove("flash"); void s.offsetWidth; s.classList.add("flash"); s.focus();
+}
+function clearResults() {   // before the first prediction and after Reset
+  result = null; hasInput = false;
+  document.body.classList.add("cleared");
+  $("risks").innerHTML = ""; $("why").innerHTML = ""; $("meas").innerHTML = "";
+  $("whyTitle").textContent = "Why this prediction"; $("measTitle").textContent = "Physiological measurements and their contribution";
+  $("warn").textContent = ""; $("err").textContent = "";
+  $("btnPredict").classList.remove("attn");
+  renderImportance(); pushToViewer();
+}
+
+/* ---------------- prediction ---------------- */
+async function runPredict() {
+  if (!hasInput) { needPatient(); return; }
+  const my = ++seq; $("err").textContent = "";
+  const btn = $("btnPredict"); btn.disabled = true; btn.textContent = "Predicting ...";
+  try {
+    const r = await api("/api/predict", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({features: payload()})});
+    if (my !== seq) return;           // a newer request already started
+    result = r; document.body.classList.remove("cleared");
+    const filled = (r.filled_with_defaults || []).map(f => meta[f] ? meta[f].label : f);
+    const note = filled.length ? "Blank fields used typical values: " + filled.slice(0, 6).join(", ") + (filled.length > 6 ? ` and ${filled.length - 6} more.` : ".") : "";
+    $("warn").textContent = [note, ...(r.warnings || [])].filter(Boolean).join(" | ");
+    renderAll(); pushToViewer();
+    btn.classList.remove("attn");
+  } catch (e) { $("err").textContent = "Prediction failed: " + e.message; }
+  finally { if (my === seq) { btn.disabled = false; btn.textContent = "Predict"; } }
+}
+$("btnPredict").onclick = runPredict;
+$("btnDefault").onclick = () => { defaults(); fillForm(); $("sample").value = ""; clearResults(); };
+$("sample").onchange = e => {
+  if (e.target.value === "") return;
+  values = Object.assign({}, samples[+e.target.value].features); fillForm(); changed();
+};
+
+/* ---------------- rendering ---------------- */
+const pct = p => (p * 100).toFixed(0) + "%";
+function chooseRegion(r, fromViewer) {
+  selected = r; if (result) renderAll(); else renderImportance();
+  if (!fromViewer) viewerApi.select(r);
+}
+function renderAll() { renderRisks(); renderWhy(); renderMeasurements(); renderImportance(); }
+
+function renderRisks() {
+  const box = $("risks"); box.innerHTML = "";
+  TARGETS.forEach(t => {
+    const x = result.targets[t], col = COLORS[x.category], d = document.createElement("div");
+    d.className = "risk" + (t === selected ? " sel" : "");
+    d.innerHTML = `<b>${t === "CAD" ? "Overall CAD" : t}</b><div class="bar"><i style="width:${x.probability * 100}%;background:${col}"></i></div><b>${pct(x.probability)}</b><span class="tag" style="background:${col}">${x.category}</span>`;
+    d.onclick = () => { chooseRegion(t, false); viewerApi.focus(t); };
+    box.appendChild(d);
+  });
+}
+function renderWhy() {
+  $("whyTitle").textContent = "Why this prediction: " + TNAME[selected];
+  const c = result.targets[selected].contributions.slice(0, 10), mx = Math.abs(c[0].contribution) || 1;
+  $("why").innerHTML = c.map(x => {
+    const w = Math.abs(x.contribution) / mx * 50, up = x.contribution > 0, v = Number.isInteger(x.value) ? x.value : x.value.toFixed(1);
+    return `<div class="drv"><span class="nm" title="${x.label}">${x.label} <span class="mute">(${fmtVal(x.feature, x.value)})</span></span>
+      <div class="dv"><i style="${up ? "left:50%" : "right:50%"};width:${w}%;background:${up ? "#ef476f" : "#2ecc71"}"></i></div>
+      <span class="mute" style="text-align:right">${up ? "+" : ""}${x.contribution.toFixed(2)}</span></div>`;
+  }).join("");
+}
+function fmtVal(name, v) {
+  const m = meta[name];
+  if (m && m.options) { const o = m.options.find(o => o.value === v); return o ? o.label : v; }
+  if (m && m.kind === "binary") return v ? "Yes" : "No";
+  return Number.isInteger(v) ? v : (+v).toFixed(1);
+}
+function renderMeasurements() {
+  $("measTitle").textContent = "Physiological measurements and their contribution: " + TNAME[selected];
+  const rows = result.targets[selected].contributions.filter(x => meta[x.feature] && meta[x.feature].physio);
+  const mx = Math.max(...rows.map(x => Math.abs(x.contribution)), 1e-6);
+  let h = `<tr><th>Measurement</th><th class="n">Value</th><th>Typical range</th><th>Status</th><th style="width:30%">Contribution to ${selected}</th><th class="n">Share</th></tr>`;
+  rows.forEach(x => {
+    const m = meta[x.feature], v = x.value;   // the value the model actually used
+    const range = m.ref_low != null && m.ref_high != null ? `${m.ref_low} to ${m.ref_high}` : m.ref_low != null ? `above ${m.ref_low}` : m.ref_high != null ? `below ${m.ref_high}` : "n/a";
+    let st = ["na", "n/a"];
+    if (m.ref_low != null && v < m.ref_low) st = ["lo", "Low"]; else if (m.ref_high != null && v > m.ref_high) st = ["hi", "High"]; else if (m.ref_low != null || m.ref_high != null) st = ["ok", "In range"];
+    const w = Math.abs(x.contribution) / mx * 50, up = x.contribution > 0;
+    h += `<tr><td>${x.label}</td><td class="n">${(+v).toFixed(Number.isInteger(+v) ? 0 : 1)} <span class="mute">${m.unit || ""}</span></td><td class="mute">${range}</td>
+      <td><span class="pill ${st[0]}">${st[1]}</span></td>
+      <td><div class="dv"><i style="${up ? "left:50%" : "right:50%"};width:${w}%;background:${up ? "#ef476f" : "#2ecc71"}"></i></div></td>
+      <td class="n">${x.share_percent.toFixed(1)}%</td></tr>`;
+  });
+  $("meas").innerHTML = h;
+}
+function renderImportance() {
+  $("giTitle").textContent = "Overall feature importance: " + selected;
+  const g = metrics.global_importance[selected], mx = g[0].importance;
+  $("gi").innerHTML = g.map(x => `<div class="drv" style="grid-template-columns:150px 1fr"><span class="nm" title="${x.label}">${x.label}</span>
+    <div class="dv" style="background:#1d2849"><i style="left:0;width:${x.importance / mx * 100}%;background:#4cc9f0"></i></div></div>`).join("") +
+    `<div class="mute" style="font-size:11.5px;margin-top:6px">Mean absolute SHAP value over the 303 training patients.</div>`;
+}
+function renderPerf() {
+  let h = `<tr><th>Target</th><th class="n">AUC</th><th class="n">Acc.</th><th class="n">Prec.</th><th class="n">Recall</th><th class="n">F1</th><th class="n">CV AUC</th></tr>`;
+  TARGETS.forEach(t => {
+    const m = metrics.holdout[t]["LogisticRegression"], cv = metrics.cross_validation[t]["LogisticRegression"];
+    h += `<tr><td><b>${t}</b></td><td class="n">${m.roc_auc.toFixed(2)}</td><td class="n">${m.accuracy.toFixed(2)}</td><td class="n">${m.precision.toFixed(2)}</td><td class="n">${m.recall.toFixed(2)}</td><td class="n">${m.f1.toFixed(2)}</td><td class="n">${cv.roc_auc.toFixed(2)}</td></tr>`;
+  });
+  $("perf").innerHTML = h; $("notes").innerHTML = metrics.deployed_model + ".<br>" + metrics.notes.join("<br>");
+}
+
+/* ---------------- resizable panels ---------------- */
+const root = document.documentElement, LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function splitter(el, cssVar, def, axis, sign, minV, maxFn) {
+  const saved = LS("cad_" + cssVar); if (saved) root.style.setProperty(cssVar, saved + "px");
+  el.addEventListener("pointerdown", e => {
+    e.preventDefault(); el.setPointerCapture(e.pointerId); document.body.classList.add("dragging");
+    const start = axis === "x" ? e.clientX : e.clientY, cur = parseFloat(getComputedStyle(root).getPropertyValue(cssVar)) || def;
+    const target = cssVar === "--lw" ? $("left") : cssVar === "--rw" ? $("right") : $("bottomWrap");
+    const base = axis === "x" ? target.getBoundingClientRect().width : target.getBoundingClientRect().height;
+    const move = ev => { const d = ((axis === "x" ? ev.clientX : ev.clientY) - start) * sign;
+      const v = clamp(base + d, minV, maxFn()); root.style.setProperty(cssVar, v + "px"); LS("cad_" + cssVar, Math.round(v)); };
+    const up = () => { document.body.classList.remove("dragging"); el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up);
+  });
+  el.addEventListener("dblclick", () => { root.style.setProperty(cssVar, def + "px"); LS("cad_" + cssVar, def); });
+}
+const workW = () => $("work").getBoundingClientRect().width, workH = () => $("work").getBoundingClientRect().height;
+splitter($("splitL"), "--lw", 330, "x", 1, 230, () => workW() - $("right").getBoundingClientRect().width - 300);
+splitter($("splitR"), "--rw", 390, "x", -1, 250, () => workW() - $("left").getBoundingClientRect().width - 300);
+splitter($("splitB"), "--bh", 300, "y", -1, 80, () => workH() - 200);
+let bottomOpen = true, bottomPrev = null;
+$("toggleBottom").onclick = () => {
+  if (bottomOpen) { bottomPrev = getComputedStyle(root).getPropertyValue("--bh") || "300px"; root.style.setProperty("--bh", "36px"); $("toggleBottom").textContent = "Expand"; }
+  else { root.style.setProperty("--bh", (bottomPrev && bottomPrev.trim()) || "300px"); $("toggleBottom").textContent = "Collapse"; }
+  bottomOpen = !bottomOpen;
+};
+
+/* ---------------- start ---------------- */
+(async function init() {
+  try {
+    const h = await api("/api/health"); setStatus(true, "API connected");
+    [schema, samples, metrics] = await Promise.all([api("/api/schema"), api("/api/samples"), api("/api/metrics")]);
+    buildForm(); defaults(); fillForm(); renderPerf();
+    samples.forEach((s, i) => { const o = document.createElement("option"); o.value = i;
+      o.textContent = `#${s.id}  age ${s.features.Age}  ${s.features.Sex ? "M" : "F"}  (true: ${s.truth.CAD ? "CAD" : "normal"}; LAD ${s.truth.LAD}, LCX ${s.truth.LCX}, RCA ${s.truth.RCA})`; $("sample").appendChild(o); });
+    clearResults();   // nothing is predicted until the user presses Predict
+  } catch (e) { setStatus(false, "API offline"); $("err").textContent = "Cannot reach the backend: " + e.message + ". Start it with: python app.py"; }
+})();
+</script>
+</body>
+</html>

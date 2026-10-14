@@ -1,0 +1,24 @@
+{
+ "roles": {
+  "heart": [
+   "FJ2428.obj",
+   "FJ2438.obj",
+   "FJ2439.obj"
+  ],
+  "LAD": [
+   "FJ2631.obj"
+  ],
+  "LCX": [
+   "FJ2649.obj",
+   "FJ2650.obj",
+   "FJ2651.obj",
+   "FJ2652.obj",
+   "FJ2653.obj",
+   "FJ2654.obj"
+  ],
+  "RCA": [
+   "FJ2723.obj"
+  ]
+ },
+ "license": "BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan"
+}
