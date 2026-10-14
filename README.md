@@ -30,8 +30,8 @@ Scores are class-balanced risk scores, not calibrated probabilities. LCX is the 
 
 ## Quick start (Python 3.10+)
 ```bash
-git clone https://github.com/harushitags86-tech/cad-risk-3d.git
-cd cad-risk-3d
+git clone https://github.com/harushitags86-tech/Multi-Model-Hackathon.git
+cd Multi-Model-Hackathon
 pip install -r requirements.txt
 python test_api.py        # backend self-test
 python app.py             # open http://127.0.0.1:8000
