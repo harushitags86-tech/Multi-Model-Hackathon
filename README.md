@@ -90,4 +90,4 @@ Single-centre data (303 patients); weak LCX model; small test set; no lesion loc
 ## License
 Code: MIT (see `LICENSE`). Anatomy and dataset: see `NOTICE.md`.
 
-Demo video: <ADD YOUTUBE LINK>
+Demo video: https://www.youtube.com/watch?v=PixuO_2qoM4&t=10s
